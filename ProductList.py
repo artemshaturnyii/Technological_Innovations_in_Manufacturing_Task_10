@@ -2,41 +2,34 @@ from Product import Product
 
 class ProductList:
     def __init__(self):
-        # id → {'product': Product, 'quantity': int}
-        self.items = {}
+        self.products = {}      ### Key — product ID, value — Product object
+        self.quantities = {}    ### Key — product ID, value — available quantity
 
-    def add_product(self, product: Product, quantity: int = 1):
-        """Adds a product to the list or increases its quantity."""
-        if product.id in self.items:
-            self.items[product.id]['quantity'] += quantity
-        else:
-            self.items[product.id] = {'product': product, 'quantity': quantity}
+    def add_product(self, product: Product):
+        ### Adds product to list and sets quantity = 1 if not yet added
+        if product.id not in self.products:
+            self.products[product.id] = product
+            self.quantities[product.id] = 1
+
+    def increase_quantity_product(self, product_id: int, increase_number: int = 1):
+        ### Increases quantity of a product by a given number
+        if product_id in self.products:
+            if increase_number < 0:
+                increase_number = 0          ### Prevent negative increment
+            self.quantities[product_id] += increase_number
+
+    def decrease_quantity_product(self, product_id: int, decrease_number: int = 1):
+        ### Decreases quantity of a product by a given number, not below 0
+        if product_id in self.products:
+            available_quantity = self.quantities[product_id]
+            if decrease_number > available_quantity:
+                decrease_number = available_quantity   ### Prevent negative result
+            self.quantities[product_id] -= decrease_number
+            if self.quantities[product_id] == 0:
+                self.remove_product(product_id)
 
     def remove_product(self, product_id: int):
-        """Removes a product from the list."""
-        if product_id in self.items:
-            del self.items[product_id]
-
-    def change_quantity(self, product_id: int, delta: int):
-        """Changes the product quantity (delta can be negative)."""
-        if product_id not in self.items:
-            return
-        new_qty = self.items[product_id]['quantity'] + delta
-        if new_qty <= 0:
-            self.remove_product(product_id)
-        else:
-            self.items[product_id]['quantity'] = new_qty
-
-    def get_total_price(self) -> float:
-        """Returns the total price of all products."""
-        return sum(item['product'].price * item['quantity'] for item in self.items.values())
-
-    def to_list(self):
-        """Returns a list of products as dictionaries (for JSON serialization)."""
-        return [
-            {
-                **item['product'].to_dict(),
-                'quantity': item['quantity']
-            }
-            for item in self.items.values()
-        ]
+        ### Removes product from the list
+        if product_id in self.products:
+            del self.products[product_id]
+            del self.quantities[product_id]

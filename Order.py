@@ -1,28 +1,44 @@
-from dataclasses import dataclass, asdict
 import random
+from dataclasses import dataclass, asdict
 
 @dataclass
 class Order:
-    id: int
-    items: list
-    total: float
-    status: str
+    id: int                  ### Unique order identifier
+    items: dict              ### Dictionary: product_id → quantity
+    total: float             ### Total order amount
+    status: str              ### Payment status ("paid" or "failed")
 
     def to_dict(self):
-        """Converts the Order object into a dictionary (for JSON serialization)."""
+        ### Converts Order dataclass to dictionary
         return asdict(self)
 
-    @staticmethod
-    def create_from_cart(order_id: int, cart, force_status: str | None = None):
-        """
-        Creates an Order from a shopping cart.
-        The payment status is either random ('paid' or 'failed')
-        or can be explicitly set via the `force_status` parameter.
-        """
-        status = force_status or random.choice(["paid", "failed"])
-        return Order(
-            id=order_id,
-            items=cart.to_list(),
-            total=cart.get_total_price(),
+class OrderService:
+    def __init__(self):
+        self.orders = {}     ### Stores all created orders (id → Order)
+        self.counter = 1     ### Order ID counter
+
+    def create_order(self, cart, force_status: str | None = None):
+        ### Creates an order from cart contents and simulates payment
+        items = cart.products.copy()
+        quantities = cart.quantities.copy()
+
+        total = sum(
+            items[pid].price * quantities[pid] for pid in items
+        )                    ### Calculates total cost
+
+        status = (
+            force_status if force_status in ["paid", "failed"]
+            else random.choice(["paid", "failed"])
+        )                    ### Determines payment result (manual or random)
+
+        order = Order(
+            id=self.counter,
+            items={pid: quantities[pid] for pid in items},
+            total=total,
             status=status
         )
+
+        self.orders[self.counter] = order
+        self.counter += 1
+
+        return order
