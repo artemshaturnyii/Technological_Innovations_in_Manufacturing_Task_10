@@ -1,29 +1,36 @@
-from ProductList import ProductList
-from Product import Product
+# Warehouse.py
 import json
-import os
+from db import repository, models
+from sqlalchemy.orm import Session
 
-class Warehouse(ProductList):
+class Warehouse:
+    def __init__(self, db: Session):
+        self.db = db
+
     def load_products_from_json(self, path: str):
-        ### Loads products and their quantities from a JSON file
-        if not os.path.exists(path):
+        """Load products from JSON file into the database"""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                products = json.load(f)
+        except FileNotFoundError:
             raise FileNotFoundError(f"File {path} not found")
 
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        for prod in products:
+            existing = repository.get_product(self.db, prod["id"])
+            if existing:
+                existing.quantity += prod.get("quantity", 10)
+                self.db.add(existing)
+            else:
+                new_product = models.Product(
+                    id=prod["id"],
+                    name=prod["name"],
+                    price=prod["price"],
+                    quantity=prod.get("quantity", 10)
+                )
+                self.db.add(new_product)
 
-        for prod in data:
-            product = Product(
-                id=prod["id"],               ### Product ID
-                name=prod["name"],           ### Product name
-                price=prod["price"]          ### Product price
-            )
+        self.db.commit()
 
-            self.add_product(product)        ### Add product to warehouse
-            self.increase_quantity_product(
-                product.id, prod.get("quantity", 10) - 1
-            )                               ### Set initial quantity
-
-    def decrease_inventory(self, product_id: int, quantity: int):
-        ### Decreases product quantity in stock after a successful order
-        self.decrease_quantity_product(product_id, quantity)
+    def decrease_inventory(self, product_id: int, qty: int) -> bool:
+        """Decrease product stock using repository logic"""
+        return repository.decrease_inventory(self.db, product_id, qty)
